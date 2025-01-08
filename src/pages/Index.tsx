@@ -19,19 +19,24 @@ const Index = () => {
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (token) {
-      const decoded = decodeToken(token);
-      setDecodedToken(decoded);
+    const updateToken = async () => {
+      if (token) {
+        const decoded = await decodeToken(token);
+        setDecodedToken(decoded);
 
-      if ((secretKey || publicKey) && decoded.isValid) {
-        setIsVerified(verifyToken(token, secretKey || publicKey));
+        if ((secretKey || publicKey) && decoded.isValid) {
+          const verified = await verifyToken(token, secretKey || publicKey);
+          setIsVerified(verified);
+        } else {
+          setIsVerified(null);
+        }
       } else {
+        setDecodedToken({ header: null, payload: null, isValid: false });
         setIsVerified(null);
       }
-    } else {
-      setDecodedToken({ header: null, payload: null, isValid: false });
-      setIsVerified(null);
-    }
+    };
+
+    updateToken();
   }, [token, secretKey, publicKey]);
 
   return (

@@ -1,3 +1,5 @@
+import * as jose from 'jose';
+
 export interface DecodedJWT {
   header: any;
   payload: any;
@@ -5,43 +7,10 @@ export interface DecodedJWT {
   error?: string;
 }
 
-// Helper function to safely decode base64Url
-const base64UrlDecode = (input: string): string => {
-  // Convert base64url to base64
-  const base64 = input
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-  
-  // Add padding
-  const pad = base64.length % 4;
-  const padded = pad 
-    ? base64 + '='.repeat(4 - pad)
-    : base64;
-
-  // Decode
+export const decodeToken = async (token: string): Promise<DecodedJWT> => {
   try {
-    const binary = atob(padded);
-    // Handle UTF-8 encoding
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return new TextDecoder().decode(bytes);
-  } catch {
-    throw new Error('Invalid base64url encoding');
-  }
-};
-
-export const decodeToken = (token: string): DecodedJWT => {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid token format');
-    }
-
-    const header = JSON.parse(base64UrlDecode(parts[0]));
-    const payload = JSON.parse(base64UrlDecode(parts[1]));
-
+    const { header, payload } = jose.decodeJwt(token, { complete: true });
+    
     return {
       header,
       payload,
@@ -57,20 +26,25 @@ export const decodeToken = (token: string): DecodedJWT => {
   }
 };
 
-export const verifyToken = (token: string, key: string): boolean => {
+export const verifyToken = async (token: string, key: string): Promise<boolean> => {
   try {
-    // In browser environments, we can only verify the token format
-    // Full signature verification requires a backend service
-    // This is a simplified check that ensures the token has all required parts
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
+    const encoder = new TextEncoder();
+    const secretKey = encoder.encode(key);
 
-    // Verify each part can be decoded
-    const [header, payload] = parts;
-    JSON.parse(base64UrlDecode(header));
-    JSON.parse(base64UrlDecode(payload));
-
-    return true;
+    // First, try to verify as HMAC (symmetric)
+    try {
+      await jose.jwtVerify(token, secretKey);
+      return true;
+    } catch {
+      // If HMAC fails, try RSA (asymmetric)
+      try {
+        const publicKey = await jose.importSPKI(key, 'RS256');
+        await jose.jwtVerify(token, publicKey);
+        return true;
+      } catch {
+        return false;
+      }
+    }
   } catch {
     return false;
   }
