@@ -9,7 +9,8 @@ export interface DecodedJWT {
 
 export const decodeToken = async (token: string): Promise<DecodedJWT> => {
   try {
-    const { header, payload } = jose.decodeJwt(token, { complete: true });
+    const header = jose.decodeProtectedHeader(token);
+    const payload = jose.decodeJwt(token);
     
     return {
       header,
