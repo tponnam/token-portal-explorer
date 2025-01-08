@@ -5,9 +5,11 @@ import { DecodedSection } from "@/components/JWTDecoder/DecodedSection";
 import { decodeToken, verifyToken, type DecodedJWT } from "@/lib/jwt";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [token, setToken] = useState("");
+  const [secretKey, setSecretKey] = useState("");
   const [publicKey, setPublicKey] = useState("");
   const [decodedToken, setDecodedToken] = useState<DecodedJWT>({
     header: null,
@@ -21,8 +23,8 @@ const Index = () => {
       const decoded = decodeToken(token);
       setDecodedToken(decoded);
 
-      if (publicKey && decoded.isValid) {
-        setIsVerified(verifyToken(token, publicKey));
+      if ((secretKey || publicKey) && decoded.isValid) {
+        setIsVerified(verifyToken(token, secretKey || publicKey));
       } else {
         setIsVerified(null);
       }
@@ -30,7 +32,7 @@ const Index = () => {
       setDecodedToken({ header: null, payload: null, isValid: false });
       setIsVerified(null);
     }
-  }, [token, publicKey]);
+  }, [token, secretKey, publicKey]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -40,12 +42,29 @@ const Index = () => {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-6">
             <TokenInput token={token} onChange={setToken} />
-            <KeyInput
-              value={publicKey}
-              onChange={setPublicKey}
-              label="Public Key"
-              placeholder="Enter public key to verify signature..."
-            />
+            
+            <Tabs defaultValue="secret" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="secret">Secret Key</TabsTrigger>
+                <TabsTrigger value="public">Public Key</TabsTrigger>
+              </TabsList>
+              <TabsContent value="secret">
+                <KeyInput
+                  value={secretKey}
+                  onChange={setSecretKey}
+                  label="Secret Key"
+                  placeholder="Enter secret key to verify signature..."
+                />
+              </TabsContent>
+              <TabsContent value="public">
+                <KeyInput
+                  value={publicKey}
+                  onChange={setPublicKey}
+                  label="Public Key"
+                  placeholder="Enter public key to verify signature..."
+                />
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="space-y-6">
