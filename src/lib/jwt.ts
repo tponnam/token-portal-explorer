@@ -7,44 +7,18 @@ export interface DecodedJWT {
   error?: string;
 }
 
-// Helper function to safely decode base64
-const base64Decode = (str: string): string => {
-  // Replace non-url compatible chars with base64 standard chars
-  let input = str
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  // Add padding if needed
-  const pad = input.length % 4;
-  if (pad) {
-    input += new Array(5 - pad).join('=');
-  }
-
-  try {
-    return decodeURIComponent(
-      atob(input)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-  } catch {
-    return atob(input);
-  }
-};
-
 export const decodeToken = (token: string): DecodedJWT => {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
+    // First try to decode without verification
+    const decoded = jwt.decode(token, { complete: true });
+    
+    if (!decoded) {
       throw new Error('Invalid token format');
     }
 
-    const header = JSON.parse(base64Decode(parts[0]));
-    const payload = JSON.parse(base64Decode(parts[1]));
-
     return {
-      header,
-      payload,
+      header: decoded.header,
+      payload: decoded.payload,
       isValid: true
     };
   } catch (error) {
@@ -59,10 +33,13 @@ export const decodeToken = (token: string): DecodedJWT => {
 
 export const verifyToken = (token: string, key: string): boolean => {
   try {
-    // For browser compatibility, we'll just validate the token structure
-    // Full signature verification would require a backend service
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every(part => part.length > 0);
+    // Attempt to verify the token with the provided key
+    const decoded = jwt.verify(token, key, {
+      algorithms: ['HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512'],
+      complete: true
+    });
+    
+    return !!decoded;
   } catch {
     return false;
   }
