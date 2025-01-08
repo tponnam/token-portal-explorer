@@ -10,7 +10,7 @@ export interface DecodedJWT {
 // Helper function to safely decode base64
 const base64Decode = (str: string): string => {
   // Replace non-url compatible chars with base64 standard chars
-  const input = str
+  let input = str
     .replace(/-/g, '+')
     .replace(/_/g, '/');
 
